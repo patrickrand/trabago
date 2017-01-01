@@ -5,7 +5,11 @@ import (
 	"time"
 )
 
-// A RateLimiter only allows a code block to be executed N times in a give duration of time.
+// TODO:
+// - buffer should be linked-list, as opposed to a slice
+// - create another function, that accepts a func(...interface{}) interface{}, to be executed if not rate-limited
+
+// A RateLimiter only allows a code block to be executed N number of times, in a give duration of time.
 type RateLimiter struct {
 	mu       *sync.Mutex
 	n        int           // number of times
@@ -13,6 +17,7 @@ type RateLimiter struct {
 	buffer   []time.Time   // linked-list would probably be more efficient...
 }
 
+// NewRateLimiter returns a new rate limiter.
 func NewRateLimiter(n int, duration time.Duration) *RateLimiter {
 	return &RateLimiter{
 		mu:       new(sync.Mutex),
@@ -22,6 +27,7 @@ func NewRateLimiter(n int, duration time.Duration) *RateLimiter {
 	}
 }
 
+// IsRateLimited determines whether a code block should be executed, or ignored.
 func (rl *RateLimiter) IsRateLimited() bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()

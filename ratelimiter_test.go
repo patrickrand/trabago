@@ -11,16 +11,11 @@ func TestIsRateLimited(t *testing.T) {
 
 	rl := NewRateLimiter(n, duration)
 
-	for i := 0; i <= n; i++ {
+	for i := 0; i <= 2*n; i++ {
 		if rl.IsRateLimited() {
-			if i != n {
-				t.Errorf("expected: %d, got: %d", n, i)
+			if i < n {
+				t.Errorf("expected a number gte to: %d, got: %d", n, i)
 			}
-			continue
-		}
-
-		if i == n {
-			t.Errorf("expected: anything except %d, got: %d", n, i)
 		}
 	}
 }
