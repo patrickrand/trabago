@@ -6,16 +6,23 @@ import (
 )
 
 func TestIsRateLimited(t *testing.T) {
-	n := 10
+	n := 100
 	duration := time.Second
-
 	rl := NewRateLimiter(n, duration)
 
-	for i := 0; i <= 2*n; i++ {
-		if rl.IsRateLimited() {
-			if i < n {
-				t.Errorf("expected a number gte to: %d, got: %d", n, i)
-			}
+	i := 2 * n
+	var counter, total int
+	for range time.Tick(time.Millisecond) {
+		if !rl.IsRateLimited() {
+			counter++
 		}
+		total++
+		if i--; i <= 0 {
+			break
+		}
+	}
+
+	if counter != n {
+		t.Errorf("expected: %d, got: %d", n, counter)
 	}
 }

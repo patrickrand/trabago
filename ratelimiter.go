@@ -50,7 +50,7 @@ func (rl *RateLimiter) IsRateLimited() bool {
 }
 
 func (rl *RateLimiter) push(t time.Time) {
-	if rl.bufSize == 0 || rl.bufHead == rl.bufTail || (rl.bufHead == nil || rl.bufTail == nil) {
+	if rl.bufSize == 0 || (rl.bufHead == nil || rl.bufTail == nil) {
 		rl.bufHead = &timeNode{t: t}
 		rl.bufTail = rl.bufHead
 		rl.bufSize = 1

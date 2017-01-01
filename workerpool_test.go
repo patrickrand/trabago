@@ -2,7 +2,6 @@ package trabago
 
 import (
 	"errors"
-	"log"
 	"strconv"
 	"sync"
 	"testing"
@@ -43,8 +42,7 @@ func TestDoWork(t *testing.T) {
 	}
 	wp.Stop()
 
-	for c := range wp.Callback() {
-		log.Print(c)
+	for _ = range wp.Callback() {
 	}
 
 	if mw.count != count {
