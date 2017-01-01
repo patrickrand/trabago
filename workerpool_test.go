@@ -2,14 +2,11 @@ package trabago
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"sync"
 	"testing"
 )
-
-func TestWorkerPool(t *testing.T) {
-
-}
 
 type mockWorker struct {
 	*sync.Mutex
@@ -28,21 +25,24 @@ func (mw *mockWorker) work(v interface{}) interface{} {
 }
 
 func TestDoWork(t *testing.T) {
+	mw := &mockWorker{
+		Mutex:     new(sync.Mutex),
+		WaitGroup: new(sync.WaitGroup),
+	}
+
 	count := 21
-	mw := &mockWorker{Mutex: new(sync.Mutex), WaitGroup: new(sync.WaitGroup), count: 0}
-
 	callback := make(chan interface{}, count)
-
 	wp := New(10, mw.work, callback)
-
-	wp.Run()
 
 	for i := 0; i < count; i++ {
 		wp.DoWork(i)
 	}
+	wp.Run()
+
 	wp.Stop()
 
-	for _ = range wp.Callback() {
+	for c := range callback {
+		log.Print(c)
 	}
 
 	if mw.count != count {

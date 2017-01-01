@@ -2,6 +2,10 @@ package trabago
 
 import "sync"
 
+// TODO:
+// - change callback paradigm to be "optional" (in the case of a user wanting to create a "pipeline")
+// 	 include a queue of responses as well, for serial handling
+
 type WorkerPool struct {
 	mu         *sync.Mutex
 	size       int
@@ -48,7 +52,6 @@ func (wp *WorkerPool) Run() {
 				case <-wp.kill:
 					wp.wg.Done()
 					return
-				default:
 				}
 			}
 		}(wp)
@@ -83,10 +86,6 @@ func (wp *WorkerPool) DoWork(v interface{}) {
 	} else {
 		wp.mu.Lock()
 		wp.queue = append(wp.queue, v)
-		defer wp.mu.Lock()
+		wp.mu.Unlock()
 	}
-}
-
-func (wp *WorkerPool) Callback() chan interface{} {
-	return wp.callback
 }
