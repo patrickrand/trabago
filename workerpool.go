@@ -2,34 +2,33 @@ package trabago
 
 import "sync"
 
-// TODO:
-// - change callback paradigm to be "optional" (in the case of a user wanting to create a "pipeline")
-// 	 include a queue of responses as well, for serial handling
-
 type WorkerPool struct {
 	mu         *sync.Mutex
+	wg         *sync.WaitGroup
 	size       int
 	running    bool
 	workerfunc func(v interface{}) interface{}
 	work       chan interface{}
-	callback   chan interface{}
+	results    chan interface{}
 	queue      []interface{}
-	kill       chan struct{}
-	wg         *sync.WaitGroup
 }
 
-func New(size uint16, workerfunc func(v interface{}) interface{}, callback chan interface{}) *WorkerPool {
-	return &WorkerPool{
+func New(size uint16, results bool, workerfunc func(v interface{}) interface{}) *WorkerPool {
+	wp := WorkerPool{
 		mu:         new(sync.Mutex),
 		size:       int(size),
 		running:    false,
 		workerfunc: workerfunc,
-		work:       make(chan interface{}),
-		callback:   callback,
+		work:       make(chan interface{}, size),
 		queue:      make([]interface{}, 0),
-		kill:       make(chan struct{}, size),
 		wg:         new(sync.WaitGroup),
 	}
+
+	if results {
+		wp.results = make(chan interface{})
+	}
+
+	return &wp
 }
 
 func (wp *WorkerPool) Run() {
@@ -43,17 +42,13 @@ func (wp *WorkerPool) Run() {
 	for i := 0; i < wp.size; i++ {
 		wp.wg.Add(1)
 		go func(wp *WorkerPool) {
-			for {
-				select {
-				case w := <-wp.work:
-					if v := wp.workerfunc(w); wp.callback != nil && v != nil {
-						wp.callback <- v
-					}
-				case <-wp.kill:
-					wp.wg.Done()
-					return
+			for w := range wp.work {
+				if v := wp.workerfunc(w); wp.results != nil && v != nil {
+					wp.results <- v
 				}
 			}
+			wp.wg.Done()
+			return
 		}(wp)
 	}
 
@@ -68,24 +63,24 @@ func (wp *WorkerPool) Run() {
 func (wp *WorkerPool) Stop() {
 	wp.mu.Lock()
 	if wp.running {
-		for i := 0; i < wp.size; i++ {
-			wp.kill <- struct{}{}
-		}
-		wp.wg.Wait()
-
 		close(wp.work)
-		close(wp.callback)
+		wp.wg.Wait()
+		close(wp.results)
 	}
 	wp.running = false
 	wp.mu.Unlock()
 }
 
 func (wp *WorkerPool) DoWork(v interface{}) {
+	wp.mu.Lock()
 	if wp.running {
 		wp.work <- v
 	} else {
-		wp.mu.Lock()
 		wp.queue = append(wp.queue, v)
-		wp.mu.Unlock()
 	}
+	wp.mu.Unlock()
+}
+
+func (wp *WorkerPool) Results() chan interface{} {
+	return wp.results
 }
