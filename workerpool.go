@@ -3,25 +3,25 @@ package trabago
 import "sync"
 
 type WorkerPool struct {
-	mu         *sync.Mutex
-	wg         *sync.WaitGroup
-	size       int
-	running    bool
-	workerfunc func(v interface{}) interface{}
-	work       chan interface{}
-	results    chan interface{}
-	queue      []interface{}
+	mu      *sync.Mutex
+	wg      *sync.WaitGroup
+	size    int
+	running bool
+	job     func(v interface{}) interface{}
+	work    chan interface{}
+	results chan interface{}
+	queue   []interface{}
 }
 
-func New(size uint16, results bool, workerfunc func(v interface{}) interface{}) *WorkerPool {
+func New(size uint16, results bool, job func(v interface{}) interface{}) *WorkerPool {
 	wp := WorkerPool{
-		mu:         new(sync.Mutex),
-		size:       int(size),
-		running:    false,
-		workerfunc: workerfunc,
-		work:       make(chan interface{}, size),
-		queue:      make([]interface{}, 0),
-		wg:         new(sync.WaitGroup),
+		mu:      new(sync.Mutex),
+		size:    int(size),
+		running: false,
+		job:     job,
+		work:    make(chan interface{}, size),
+		queue:   make([]interface{}, 0),
+		wg:      new(sync.WaitGroup),
 	}
 
 	if results {
@@ -43,7 +43,7 @@ func (wp *WorkerPool) Run() {
 		wp.wg.Add(1)
 		go func(wp *WorkerPool) {
 			for w := range wp.work {
-				if v := wp.workerfunc(w); wp.results != nil && v != nil {
+				if v := wp.job(w); wp.results != nil && v != nil {
 					wp.results <- v
 				}
 			}
@@ -52,7 +52,7 @@ func (wp *WorkerPool) Run() {
 		}(wp)
 	}
 
-	// clear any queued work
+	// clear any work items that queued up before workerpool was started
 	for i := range wp.queue {
 		wp.work <- wp.queue[i]
 	}
@@ -79,6 +79,14 @@ func (wp *WorkerPool) DoWork(v interface{}) {
 		wp.queue = append(wp.queue, v)
 	}
 	wp.mu.Unlock()
+}
+
+func (wp *WorkerPool) Size() int {
+	return wp.size
+}
+
+func (wp *WorkerPool) Running() bool {
+	return wp.running
 }
 
 func (wp *WorkerPool) Results() chan interface{} {

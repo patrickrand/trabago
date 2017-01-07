@@ -49,6 +49,16 @@ func (rl *RateLimiter) ConditionalExecute(f func() interface{}) (interface{}, bo
 	return f(), true
 }
 
+func (rl *RateLimiter) ConditionalExecuteJob(v interface{}, f func(v interface{}) interface{}) (interface{}, bool) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	if f == nil || rl.isRateLimited(time.Now()) {
+		return nil, false
+	}
+	return f(v), true
+}
+
 func (rl *RateLimiter) isRateLimited(t time.Time) bool {
 	if rl.bufSize == 0 || rl.bufHead == nil || rl.bufTail == nil {
 		rl.bufHead = &timeNode{t: t}
