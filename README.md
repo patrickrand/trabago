@@ -1,5 +1,8 @@
 # trabago
-Go library for various work-related patterns (rate-limiting, worker-pools, scheduling, etc.)
+Go library for various work-related patterns (rate-limiting, worker-pools, scheduling, etc.). 
+All provided data structures are concurrency-safe.
+
+> Work in progress (1/10/2017)
 
 ## Features
 
@@ -17,9 +20,32 @@ Go library for various work-related patterns (rate-limiting, worker-pools, sched
 
 `go get github.com/patrickrand/trabago`
 
-## Usage
+## Usages
+
+### Rate limiting
 
 ```go
+func main() {
+    // number of permitted executions per time-interval
+    var n uint = 100
 
+    // time-interval to rate-limit over
+    duration := 10 * time.Second
 
+    viewLimiter := trabago.NewRateLimiter(n, duration)
+
+    http.Handle("/view", func(w http.ResponseWriter, r *http.Request) {
+        if viewLimiter.IsRateLimited() {
+            w.WriteHeader(http.StatusTooManyRequests)
+            w.Write([]byte(`Client has exceeded API rate limit.`))
+            return
+        }
+
+        ...
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(`Some view...`))
+    })
+
+    http.ListenAndServe(":8080", nil)
+}
 ```
